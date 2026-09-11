@@ -23,6 +23,7 @@ Maono Link.
 | RGB light on/off and modes 0–8 | ✓ | ✓ |
 | Live input level meter | ✓ | — |
 | Waybar / status-bar JSON | — | ✓ |
+| Omarchy bar widget | — | ✓ |
 | Raw field read, write, and range scan | — | ✓ |
 
 ## Requirements
@@ -141,6 +142,27 @@ gh release create v0.3.0 --generate-notes
 The workflow refuses to run if the tag and `Cargo.toml` disagree. It needs one
 repository secret, `AUR_SSH_PRIVATE_KEY`, holding a key registered with the AUR
 account. `workflow_dispatch` re-runs it against an existing tag.
+
+## Omarchy bar widget
+
+A Quickshell bar widget for the [Omarchy](https://omarchy.org) shell: mic icon
+in the bar, and a panel with battery, a mute switch, a gain slider, noise
+reduction and the RGB light.
+
+```sh
+maono shell install
+omarchy-shell shell rescanPlugins
+omarchy plugin enable maono
+```
+
+`maono shell install` copies the widget into
+`~/.config/omarchy/plugins/maono/`, because the shell only discovers plugins
+there and a package cannot write to your config at build time. Pass `--force`
+to overwrite an existing copy, and `maono shell uninstall` to remove it.
+
+Inside the panel: arrow keys move between the controls and change the selected
+one, `m` mutes, `l` toggles the light, `r` reloads. The mouse works on the
+switches and sliders.
 
 ## Status bar
 

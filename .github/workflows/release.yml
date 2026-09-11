@@ -72,12 +72,16 @@ jobs:
           sha_bin=$(fetch_sha "$base/releases/download/$tag/maono")
           sha_license=$(fetch_sha "$base/raw/$tag/LICENSE")
           sha_rules=$(fetch_sha "$base/raw/$tag/99-maono.rules")
+          sha_manifest=$(fetch_sha "$base/raw/$tag/shell/manifest.json")
+          sha_panel=$(fetch_sha "$base/raw/$tag/shell/Panel.qml")
 
           mkdir -p out
           sed -e "s|@PKGVER@|${{ steps.ver.outputs.pkgver }}|" \
               -e "s|@SHA_BIN@|$sha_bin|" \
               -e "s|@SHA_LICENSE@|$sha_license|" \
               -e "s|@SHA_RULES@|$sha_rules|" \
+              -e "s|@SHA_MANIFEST@|$sha_manifest|" \
+              -e "s|@SHA_PANEL@|$sha_panel|" \
               packaging/PKGBUILD.in > out/PKGBUILD
 
           # Match only @PLACEHOLDER@ - the maintainer line has an @ in it.

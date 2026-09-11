@@ -4,6 +4,7 @@ use maono::mic;
 mod theme;
 mod widgets;
 mod tui;
+mod shell;
 
 use mic::{
     Mic, BATTERY, GAIN, GAIN_MAX, LIGHT, LIGHT_MODE, LIGHT_MODE_MAX, MUTE, NR, NR_LEVEL, NR_NAMES,
@@ -20,6 +21,9 @@ maono - control a Maono PD100W wireless microphone
     maono gain [n | +n | -n]  0-20
     maono nr [off | low | mid | high]
     maono light [on | off | next | 0-8]
+
+    maono shell install       add the Omarchy bar widget (--force to replace)
+    maono shell uninstall     remove it again
 
     maono get <id>            read one raw field, e.g. 0x208e
     maono set <id> <value>    write one raw field
@@ -93,7 +97,8 @@ impl State {
         println!(
             "{{\"text\":\"{icon}\",\"class\":\"{class}\",\"tooltip\":\"{tip}\",\
 \"muted\":{muted},\"battery\":{batt},\"gain\":{gain},\"gain_max\":{gm},\
-\"nr\":\"{nr}\",\"light_on\":{light},\"light_mode\":{mode}}}",
+\"nr\":\"{nr}\",\"nr_on\":{nr_on},\"nr_level\":{nr_lvl},\
+\"light_on\":{light},\"light_mode\":{mode}}}",
             class = if muted { "muted" } else { "live" },
             tip = format!(
                 "Mic {} · battery {}% · gain {}/{GAIN_MAX} · NR {}",
@@ -106,6 +111,10 @@ impl State {
             gain = num(self.gain),
             gm = GAIN_MAX,
             nr = self.nr_text(),
+            // Split out as well as the text, so the bar widget does not have
+            // to parse "on, mid" back apart.
+            nr_on = self.nr_on.unwrap_or(false),
+            nr_lvl = num(self.nr_level),
             light = self.light_on.unwrap_or(false),
             mode = num(self.light_mode),
         );
@@ -135,6 +144,20 @@ fn main() -> ExitCode {
 
     if cmd == "tui" {
         return match tui::run() {
+            Ok(()) => ExitCode::SUCCESS,
+            Err(e) => fail(e),
+        };
+    }
+
+    // Copying files around needs no receiver, so this runs before Mic::open.
+    if cmd == "shell" {
+        let force = args.iter().any(|a| a == "--force");
+        let result = match positional.get(1).copied() {
+            Some("install") => shell::install(force),
+            Some("uninstall") => shell::uninstall(),
+            _ => return fail("shell takes install or uninstall"),
+        };
+        return match result {
             Ok(()) => ExitCode::SUCCESS,
             Err(e) => fail(e),
         };

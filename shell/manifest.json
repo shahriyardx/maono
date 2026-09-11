@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "id": "maono",
+  "name": "Microphone",
+  "version": "0.4.0",
+  "author": "MD Shahriyar Alam",
+  "description": "Maono PD100W wireless microphone controls",
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "Panel.qml"
+  },
+  "barWidget": {
+    "displayName": "Microphone",
+    "description": "Mute, gain, noise reduction and battery",
+    "category": "Hardware",
+    "defaultSection": "right",
+    "allowMultiple": false
+  }
+}
