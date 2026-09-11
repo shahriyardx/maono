@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Maono PD100W
+GenericName=Microphone Control
+Comment=Control a Maono PD100W wireless microphone
+Exec=maono-gui
+Icon=audio-input-microphone
+Terminal=false
+Categories=AudioVideo;Audio;Mixer;Settings;
+Keywords=microphone;mic;maono;pd100w;gain;mute;
+StartupWMClass=maono-gui

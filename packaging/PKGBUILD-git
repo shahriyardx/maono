@@ -1,0 +1,37 @@
+# Maintainer: Shahriyar Alam <mdshahriyaralam552@gmail.com>
+# Build straight from master - use this one until there is a tagged release.
+pkgname=maono-mic-git
+_pkgname=maono-mic
+pkgver=r1
+pkgrel=1
+pkgdesc='Control a Maono PD100W wireless microphone - CLI, TUI and GUI (git)'
+arch=('x86_64' 'aarch64')
+url='https://github.com/shahriyardx/maono-mic'
+license=('MIT')
+depends=('gcc-libs' 'libxkbcommon' 'wayland' 'libx11' 'libxcursor' 'libxi' 'libxrandr' 'libglvnd')
+makedepends=('cargo' 'git')
+provides=("$_pkgname")
+conflicts=("$_pkgname")
+source=("git+$url.git")
+sha256sums=('SKIP')
+
+pkgver() {
+  cd "$_pkgname"
+  printf 'r%s.g%s' "$(git rev-list --count HEAD)" "$(git rev-parse --short HEAD)"
+}
+
+build() {
+  cd "$_pkgname"
+  export RUSTUP_TOOLCHAIN=stable CARGO_TARGET_DIR=target
+  cargo build --release --all-features
+}
+
+package() {
+  cd "$_pkgname"
+  install -Dm755 target/release/maono-mic "$pkgdir/usr/bin/maono-mic"
+  install -Dm755 target/release/maono-gui "$pkgdir/usr/bin/maono-gui"
+  install -Dm644 99-maono.rules "$pkgdir/usr/lib/udev/rules.d/99-maono.rules"
+  install -Dm644 packaging/maono-gui.desktop \
+    "$pkgdir/usr/share/applications/maono-gui.desktop"
+  install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}

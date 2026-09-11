@@ -1,0 +1,15 @@
+# Maono PD100W wireless microphone receiver (USB 352f:0414)
+#
+# The receiver speaks a vendor HID protocol, so maono-mic talks to its
+# /dev/hidraw* node directly. By default that node is root-only.
+#
+# uaccess hands the node to whoever is logged in at the local seat, which is
+# what you want on a desktop. The group fallback covers headless logins and
+# systems without systemd-logind.
+#
+# Install:
+#   sudo install -m644 99-maono.rules /etc/udev/rules.d/99-maono.rules
+#   sudo udevadm control --reload-rules && sudo udevadm trigger
+# Then replug the receiver.
+
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="352f", ATTRS{idProduct}=="0414", TAG+="uaccess", MODE="0660", GROUP="input"
