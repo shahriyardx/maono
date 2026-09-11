@@ -42,12 +42,11 @@ port works and replugging is fine.
 ### Arch Linux / AUR
 
 ```sh
-paru -S maono-bin      # or: yay -S maono-bin
+paru -S maono      # or: yay -S maono
 ```
 
-Prebuilt x86_64 binaries, so there is no Rust toolchain to install and nothing
-to compile. The package drops the udev rule in place for you — replug the
-receiver afterwards and you are done.
+The package drops the udev rule in place for you — replug the receiver
+afterwards and you are done.
 
 ### From source
 
