@@ -107,8 +107,16 @@ jobs:
           mkdir -p ~/.ssh
           printf '%s\n' "$AUR_SSH_PRIVATE_KEY" > ~/.ssh/aur
           chmod 600 ~/.ssh/aur
-          ssh-keyscan -H aur.archlinux.org >> ~/.ssh/known_hosts 2>/dev/null
-          export GIT_SSH_COMMAND="ssh -i ~/.ssh/aur -o IdentitiesOnly=yes"
+
+          # Pinned rather than scanned, so a hijacked DNS answer cannot hand us
+          # a different host. This is the AUR's published host key.
+          cat > ~/.ssh/known_hosts <<'HOSTKEYS'
+          aur.archlinux.org ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEuBKrPzbawxA/k2g6NcyV5jmqwJ2s+zpgZGZ7tpLIcN
+          HOSTKEYS
+          sed -i 's/^ *//' ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+
+          export GIT_SSH_COMMAND="ssh -i ~/.ssh/aur -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes"
 
           git clone ssh://aur@aur.archlinux.org/maono.git aur
           cp out/PKGBUILD out/.SRCINFO aur/
