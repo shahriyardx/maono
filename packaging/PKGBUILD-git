@@ -4,11 +4,11 @@ pkgname=maono-git
 _pkgname=maono
 pkgver=r1
 pkgrel=1
-pkgdesc='Control a Maono PD100W wireless microphone - TUI, GUI and CLI (git)'
+pkgdesc='Control a Maono PD100W wireless microphone from a terminal UI or the command line (git)'
 arch=('x86_64' 'aarch64')
 url='https://github.com/shahriyardx/maono'
 license=('MIT')
-depends=('gcc-libs' 'libxkbcommon' 'wayland' 'libx11' 'libxcursor' 'libxi' 'libxrandr' 'libglvnd')
+depends=('gcc-libs')
 makedepends=('cargo' 'git')
 provides=("$_pkgname")
 conflicts=("$_pkgname" "$_pkgname-bin")
@@ -29,9 +29,6 @@ build() {
 package() {
   cd "$_pkgname"
   install -Dm755 target/release/maono "$pkgdir/usr/bin/maono"
-  install -Dm755 target/release/maono-gui "$pkgdir/usr/bin/maono-gui"
   install -Dm644 99-maono.rules "$pkgdir/usr/lib/udev/rules.d/99-maono.rules"
-  install -Dm644 packaging/maono-gui.desktop \
-    "$pkgdir/usr/share/applications/maono-gui.desktop"
   install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
 }

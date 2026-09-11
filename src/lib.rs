@@ -1,6 +1,6 @@
 //! Maono PD100W wireless microphone control.
 //!
-//! The protocol lives here so every frontend - CLI, TUI and GUI - drives the
+//! The protocol lives here so both frontends - the CLI and the TUI - drive the
 //! device through exactly one implementation.
 
 pub mod mic;

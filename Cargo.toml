@@ -1,8 +1,8 @@
 [package]
 name = "maono"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2024"
-description = "Control a Maono PD100W wireless microphone - CLI, TUI and GUI"
+description = "Control a Maono PD100W wireless microphone from a terminal UI or the command line"
 license = "MIT"
 repository = "https://github.com/shahriyardx/maono"
 keywords = ["maono", "microphone", "hidraw", "tui"]
@@ -10,8 +10,11 @@ categories = ["command-line-utilities", "hardware-support"]
 
 [dependencies]
 crossterm = "0.29.0"
-eframe = { version = "0.36.2", default-features = false, features = ["default_fonts", "glow", "wayland", "x11"] }
 ratatui = "0.30.2"
+
+[[bin]]
+name = "maono"
+path = "src/main.rs"
 
 [profile.release]
 lto = true

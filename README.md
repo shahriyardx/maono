@@ -1,7 +1,7 @@
 # maono
 
 Control a **Maono PD100W** wireless microphone on Linux. Run `maono` for a live
-terminal UI, `maono-gui` for a desktop window, or pass a subcommand to script it. No vendor app, no Wine, no audio-server tricks — it talks
+terminal UI, or pass a subcommand to script it. No vendor app, no Wine, no audio-server tricks — it talks
 to the receiver's raw HID node using the vendor protocol reverse-engineered from
 Maono Link.
 
@@ -14,23 +14,25 @@ Maono Link.
 
 ## What it can do
 
-| Feature | CLI | TUI | GUI |
-| --- | :-: | :-: | :-: |
-| Battery percent | ✓ | ✓ | ✓ |
-| Mute / unmute | ✓ | ✓ | ✓ |
-| Gain, 0–20 | ✓ | ✓ | ✓ |
-| Noise reduction, off / low / mid / high | ✓ | ✓ | ✓ |
-| RGB light on/off and modes 0–8 | ✓ | ✓ | ✓ |
-| Live input level meter | — | ✓ | ✓ |
-| Waybar / status-bar JSON | ✓ | — | — |
-| Raw field read, write, and range scan | ✓ | — | — |
+| Feature | TUI | CLI |
+| --- | :-: | :-: |
+| Battery percent | ✓ | ✓ |
+| Mute / unmute | ✓ | ✓ |
+| Gain, 0–20 | ✓ | ✓ |
+| Noise reduction, off / low / mid / high | ✓ | ✓ |
+| RGB light on/off and modes 0–8 | ✓ | ✓ |
+| Live input level meter | ✓ | — |
+| Waybar / status-bar JSON | — | ✓ |
+| Raw field read, write, and range scan | — | ✓ |
 
 ## Requirements
 
 - Linux with `hidraw` (every distro kernel ships it).
 - A udev rule so your user can open the device — see [Permissions](#permissions).
 - Rust 1.85 or newer to build from source (the crate is edition 2024).
-- For `maono-gui` only: Wayland or X11, plus working OpenGL.
+
+One binary, two dependencies (`ratatui` and `crossterm`), and it links nothing
+but libc.
 
 The receiver is found by its USB ids, not by port or device number, so any USB
 port works and replugging is fine.
@@ -55,7 +57,6 @@ cd maono
 cargo build --release
 
 sudo install -Dm755 target/release/maono /usr/local/bin/maono
-sudo install -Dm755 target/release/maono-gui /usr/local/bin/maono-gui
 sudo install -Dm644 99-maono.rules /etc/udev/rules.d/99-maono.rules
 sudo udevadm control --reload-rules && sudo udevadm trigger
 ```
@@ -103,7 +104,6 @@ Examples:
 
 ```sh
 maono                 # full-screen live view
-maono-gui             # desktop window
 maono toggle          # mute or unmute
 maono gain +2         # nudge gain up
 maono nr high
