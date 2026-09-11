@@ -20,12 +20,18 @@ jobs:
     # Build inside Arch so the binary is linked against the same glibc the
     # people installing it are running.
     container: archlinux:base-devel
+    defaults:
+      run:
+        shell: bash
 
     steps:
       - name: Install tools
         run: pacman -Syu --needed --noconfirm git rustup github-cli openssh
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
+
+      - name: Let git use the checkout
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
       - name: Work out the version
         id: ver
@@ -50,7 +56,9 @@ jobs:
       - name: Attach the binary to the release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release upload "${{ steps.ver.outputs.tag }}" target/release/maono --clobber
+        run: |
+          gh release upload "${{ steps.ver.outputs.tag }}" target/release/maono \
+            --clobber -R "${{ github.repository }}"
 
       - name: Render the PKGBUILD
         id: render
