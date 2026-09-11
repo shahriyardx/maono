@@ -104,19 +104,22 @@ jobs:
           AUR_SSH_PRIVATE_KEY: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
         run: |
           set -euo pipefail
-          mkdir -p ~/.ssh
-          printf '%s\n' "$AUR_SSH_PRIVATE_KEY" > ~/.ssh/aur
-          chmod 600 ~/.ssh/aur
+          # Absolute paths throughout: ssh expands ~ from the passwd database,
+          # which is /root here, while the shell's ~ is $HOME (/github/home).
+          ssh_dir="$HOME/.ssh"
+          mkdir -p "$ssh_dir"
+
+          printf '%s\n' "$AUR_SSH_PRIVATE_KEY" > "$ssh_dir/aur"
+          chmod 600 "$ssh_dir/aur"
 
           # Pinned rather than scanned, so a hijacked DNS answer cannot hand us
           # a different host. This is the AUR's published host key.
-          cat > ~/.ssh/known_hosts <<'HOSTKEYS'
-          aur.archlinux.org ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEuBKrPzbawxA/k2g6NcyV5jmqwJ2s+zpgZGZ7tpLIcN
-          HOSTKEYS
-          sed -i 's/^ *//' ~/.ssh/known_hosts
-          chmod 600 ~/.ssh/known_hosts
+          printf '%s %s %s\n' aur.archlinux.org ssh-ed25519 \
+            AAAAC3NzaC1lZDI1NTE5AAAAIEuBKrPzbawxA/k2g6NcyV5jmqwJ2s+zpgZGZ7tpLIcN \
+            > "$ssh_dir/known_hosts"
+          chmod 600 "$ssh_dir/known_hosts"
 
-          export GIT_SSH_COMMAND="ssh -i ~/.ssh/aur -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes"
+          export GIT_SSH_COMMAND="ssh -i $ssh_dir/aur -o IdentitiesOnly=yes -o UserKnownHostsFile=$ssh_dir/known_hosts -o StrictHostKeyChecking=yes"
 
           git clone ssh://aur@aur.archlinux.org/maono.git aur
           cp out/PKGBUILD out/.SRCINFO aur/
