@@ -5,7 +5,7 @@
 //! that it runs on any Linux box the receiver is plugged into.
 
 use eframe::egui::{self, Color32, CornerRadius, RichText, Stroke, Vec2};
-use maono_mic::mic::{
+use maono::mic::{
     level_fraction, Mic, BATTERY, GAIN, GAIN_MAX, LEVEL, LIGHT, LIGHT_MODE, LIGHT_MODE_MAX, MUTE,
     NR, NR_LEVEL,
 };

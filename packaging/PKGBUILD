@@ -1,15 +1,15 @@
 # Maintainer: Shahriyar Alam <mdshahriyaralam552@gmail.com>
-pkgname=maono-mic
+pkgname=maono
 pkgver=0.1.0
 pkgrel=1
-pkgdesc='Control a Maono PD100W wireless microphone - CLI, TUI and GUI'
+pkgdesc='Control a Maono PD100W wireless microphone - TUI, GUI and CLI'
 arch=('x86_64' 'aarch64')
-url='https://github.com/shahriyardx/maono-mic'
+url='https://github.com/shahriyardx/maono'
 license=('MIT')
 depends=('gcc-libs' 'libxkbcommon' 'wayland' 'libx11' 'libxcursor' 'libxi' 'libxrandr' 'libglvnd')
 makedepends=('cargo')
 source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz")
-sha256sums=('SKIP')
+sha256sums=('SHA256_SOURCE')
 
 prepare() {
   cd "$pkgname-$pkgver"
@@ -25,7 +25,7 @@ build() {
 
 package() {
   cd "$pkgname-$pkgver"
-  install -Dm755 target/release/maono-mic "$pkgdir/usr/bin/maono-mic"
+  install -Dm755 target/release/maono "$pkgdir/usr/bin/maono"
   install -Dm755 target/release/maono-gui "$pkgdir/usr/bin/maono-gui"
   install -Dm644 99-maono.rules "$pkgdir/usr/lib/udev/rules.d/99-maono.rules"
   install -Dm644 packaging/maono-gui.desktop \

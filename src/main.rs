@@ -1,6 +1,6 @@
 //! Control a Maono PD100W wireless microphone from the command line or a TUI.
 
-use maono_mic::mic;
+use maono::mic;
 mod theme;
 mod widgets;
 mod tui;
@@ -12,18 +12,18 @@ use std::io::Write;
 use std::process::ExitCode;
 
 const USAGE: &str = "\
-maono-mic - control a Maono PD100W wireless microphone
+maono - control a Maono PD100W wireless microphone
 
-    maono-mic [status] [--json]   battery, mute, gain, noise reduction
-    maono-mic mute | unmute | toggle
-    maono-mic gain [n | +n | -n]  0-20
-    maono-mic nr [off | low | mid | high]
-    maono-mic light [on | off | next | 0-8]
-    maono-mic tui                 live terminal UI
+    maono                     live terminal UI (default)
+    maono status [--json]     battery, mute, gain, noise reduction
+    maono mute | unmute | toggle
+    maono gain [n | +n | -n]  0-20
+    maono nr [off | low | mid | high]
+    maono light [on | off | next | 0-8]
 
-    maono-mic get <id>            read one raw field, e.g. 0x208e
-    maono-mic set <id> <value>    write one raw field
-    maono-mic scan [lo] [hi]      dump a field range (read-only)
+    maono get <id>            read one raw field, e.g. 0x208e
+    maono set <id> <value>    write one raw field
+    maono scan [lo] [hi]      dump a field range (read-only)
 
 Field ids are slot-based: 0x2000 transmitter 1, 0x2800 transmitter 2,
 0x3000 receiver. The firmware validates nothing it is sent.
@@ -113,7 +113,7 @@ impl State {
 }
 
 fn fail(msg: impl std::fmt::Display) -> ExitCode {
-    let _ = writeln!(std::io::stderr(), "maono-mic: {msg}");
+    let _ = writeln!(std::io::stderr(), "maono: {msg}");
     ExitCode::FAILURE
 }
 
@@ -125,7 +125,8 @@ fn main() -> ExitCode {
         .filter(|a| !a.starts_with("--"))
         .map(String::as_str)
         .collect();
-    let cmd = positional.first().copied().unwrap_or("status");
+    // Bare `maono` opens the TUI; everything else is an explicit subcommand.
+    let cmd = positional.first().copied().unwrap_or("tui");
 
     if matches!(cmd, "-h" | "help") || args.iter().any(|a| a == "--help") {
         print!("{USAGE}");
@@ -253,7 +254,7 @@ fn main() -> ExitCode {
             },
             "get" => {
                 let Some(id) = positional.get(1).and_then(|a| parse_id(a)) else {
-                    return Ok(fail("usage: maono-mic get <id>"));
+                    return Ok(fail("usage: maono get <id>"));
                 };
                 match m.get(id)? {
                     Some(v) => println!("  0x{id:04x} = {v}  (0x{v:04x})"),
@@ -266,7 +267,7 @@ fn main() -> ExitCode {
                     positional.get(2).and_then(|a| parse_id(a)),
                 ) {
                     (Some(i), Some(v)) => (i, v),
-                    _ => return Ok(fail("usage: maono-mic set <id> <value>")),
+                    _ => return Ok(fail("usage: maono set <id> <value>")),
                 };
                 m.set(id, val)?;
                 std::thread::sleep(std::time::Duration::from_millis(350));

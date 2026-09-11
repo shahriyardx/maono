@@ -7,7 +7,7 @@
 //! Everything is reachable three ways: mouse (click, drag, scroll), keyboard
 //! shortcuts, and Tab focus with arrow keys.
 
-use maono_mic::mic::{
+use maono::mic::{
     level_fraction, Mic, BATTERY, GAIN, GAIN_MAX, LEVEL, LIGHT, LIGHT_MODE, LIGHT_MODE_MAX,
     MUTE, NR, NR_LEVEL, NR_NAMES,
 };

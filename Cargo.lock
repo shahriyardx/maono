@@ -1529,7 +1529,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "maono-mic"
+name = "maono"
 version = "0.1.0"
 dependencies = [
  "crossterm",

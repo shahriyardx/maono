@@ -1,7 +1,7 @@
-# maono-mic
+# maono
 
-Control a **Maono PD100W** wireless microphone on Linux: command line, terminal
-UI, and a small GUI. No vendor app, no Wine, no audio-server tricks — it talks
+Control a **Maono PD100W** wireless microphone on Linux. Run `maono` for a live
+terminal UI, `maono-gui` for a desktop window, or pass a subcommand to script it. No vendor app, no Wine, no audio-server tricks — it talks
 to the receiver's raw HID node using the vendor protocol reverse-engineered from
 Maono Link.
 
@@ -40,32 +40,34 @@ port works and replugging is fine.
 ### Arch Linux / AUR
 
 ```sh
-paru -S maono-mic      # or: yay -S maono-mic
+paru -S maono-bin      # prebuilt, no Rust toolchain needed
+paru -S maono          # builds from the tagged release
+paru -S maono-git      # builds from main
 ```
 
-The package installs the udev rule for you. Replug the receiver afterwards.
+Any of them installs the udev rule for you. Replug the receiver afterwards.
 
 ### From source
 
 ```sh
-git clone https://github.com/shahriyardx/maono-mic.git
-cd maono-mic
+git clone https://github.com/shahriyardx/maono.git
+cd maono
 cargo build --release
 
-sudo install -Dm755 target/release/maono-mic /usr/local/bin/maono-mic
+sudo install -Dm755 target/release/maono /usr/local/bin/maono
 sudo install -Dm755 target/release/maono-gui /usr/local/bin/maono-gui
 sudo install -Dm644 99-maono.rules /etc/udev/rules.d/99-maono.rules
 sudo udevadm control --reload-rules && sudo udevadm trigger
 ```
 
-Unplug and replug the receiver, then run `maono-mic`.
+Unplug and replug the receiver, then run `maono`.
 
 ## Permissions
 
 Without the udev rule you get:
 
 ```
-maono-mic: /dev/hidraw3 needs the udev rule - see 99-maono.rules
+maono: /dev/hidraw3 needs the udev rule - see 99-maono.rules
 ```
 
 `99-maono.rules` matches USB `352f:0414` and does two things: it tags the node
@@ -77,32 +79,35 @@ fallback, add yourself to it once and log out and back in:
 sudo usermod -aG input "$USER"
 ```
 
-`sudo maono-mic` also works, but you do not need it.
+`sudo maono` also works, but you do not need it.
 
 ## Usage
 
 ```
-maono-mic [status] [--json]   battery, mute, gain, noise reduction
-maono-mic mute | unmute | toggle
-maono-mic gain [n | +n | -n]  0-20
-maono-mic nr [off | low | mid | high]
-maono-mic light [on | off | next | 0-8]
-maono-mic tui                 live terminal UI
+maono                     live terminal UI (default)
+maono status [--json]     battery, mute, gain, noise reduction
+maono mute | unmute | toggle
+maono gain [n | +n | -n]  0-20
+maono nr [off | low | mid | high]
+maono light [on | off | next | 0-8]
 
-maono-mic get <id>            read one raw field, e.g. 0x208e
-maono-mic set <id> <value>    write one raw field
-maono-mic scan [lo] [hi]      dump a field range (read-only)
+maono get <id>            read one raw field, e.g. 0x208e
+maono set <id> <value>    write one raw field
+maono scan [lo] [hi]      dump a field range (read-only)
 ```
+
+Running `maono` with no arguments opens the TUI, which is the everyday way to
+use it. The subcommands are there for scripting and for status bars.
 
 Examples:
 
 ```sh
-maono-mic toggle          # mute or unmute
-maono-mic gain +2         # nudge gain up
-maono-mic nr high
-maono-mic light next      # cycle the RGB mode
-maono-mic tui             # full-screen live view
-maono-gui                 # desktop window
+maono                 # full-screen live view
+maono-gui             # desktop window
+maono toggle          # mute or unmute
+maono gain +2         # nudge gain up
+maono nr high
+maono light next      # cycle the RGB mode
 ```
 
 ### TUI keys
@@ -122,7 +127,7 @@ The mouse works too: click or drag the sliders and switches.
 
 ### Status bar
 
-`maono-mic status --json` prints one line for Waybar and friends:
+`maono status --json` prints one line for Waybar and friends:
 
 ```json
 {"text":"󰍬","class":"live","tooltip":"Mic live · battery 87% · gain 12/20 · NR on, mid","muted":false,"battery":87,"gain":12,"gain_max":20,"nr":"on, mid","light_on":true,"light_mode":3}
@@ -133,10 +138,10 @@ it in CSS. A Waybar module looks like this:
 
 ```jsonc
 "custom/mic": {
-  "exec": "maono-mic status --json",
+  "exec": "maono status --json",
   "return-type": "json",
   "interval": 5,
-  "on-click": "maono-mic toggle"
+  "on-click": "maono toggle"
 }
 ```
 
