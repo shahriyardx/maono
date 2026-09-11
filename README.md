@@ -45,7 +45,8 @@ port works and replugging is fine.
 paru -S maono      # or: yay -S maono
 ```
 
-The package drops the udev rule in place for you — replug the receiver
+Installs the prebuilt binary from the GitHub release, so there is nothing to
+compile. The package drops the udev rule in place for you — replug the receiver
 afterwards and you are done.
 
 ### From source
