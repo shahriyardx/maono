@@ -1,6 +1,6 @@
 # Maono PD100W wireless microphone receiver (USB 352f:0414)
 #
-# The receiver speaks a vendor HID protocol, so maono-mic talks to its
+# The receiver speaks a vendor HID protocol, so maono talks to its
 # /dev/hidraw* node directly. By default that node is root-only.
 #
 # uaccess hands the node to whoever is logged in at the local seat, which is
