@@ -1,0 +1,117 @@
+name: release
+
+# Publishing a GitHub release builds the binary, attaches it to that release,
+# and pushes a matching PKGBUILD to the AUR. Nothing to do by hand.
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing release tag to (re)publish, e.g. v0.2.0"
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    # Build inside Arch so the binary is linked against the same glibc the
+    # people installing it are running.
+    container: archlinux:base-devel
+
+    steps:
+      - name: Install tools
+        run: pacman -Syu --needed --noconfirm git rustup github-cli openssh
+
+      - uses: actions/checkout@v4
+
+      - name: Work out the version
+        id: ver
+        run: |
+          tag="${{ github.event.release.tag_name || inputs.tag }}"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "pkgver=${tag#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Check the tag matches Cargo.toml
+        run: |
+          cargo_ver=$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -1)
+          if [ "$cargo_ver" != "${{ steps.ver.outputs.pkgver }}" ]; then
+            echo "::error::tag is ${{ steps.ver.outputs.tag }} but Cargo.toml says $cargo_ver"
+            exit 1
+          fi
+
+      - name: Build
+        run: |
+          rustup default stable
+          cargo build --release --locked
+
+      - name: Attach the binary to the release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload "${{ steps.ver.outputs.tag }}" target/release/maono --clobber
+
+      - name: Render the PKGBUILD
+        id: render
+        run: |
+          set -euo pipefail
+          tag="${{ steps.ver.outputs.tag }}"
+          base="https://github.com/${{ github.repository }}"
+
+          # Hash exactly what makepkg will fetch, not the local copies.
+          fetch_sha() { curl -fsSL --retry 5 --retry-delay 3 "$1" | sha256sum | cut -d' ' -f1; }
+          sha_bin=$(fetch_sha "$base/releases/download/$tag/maono")
+          sha_license=$(fetch_sha "$base/raw/$tag/LICENSE")
+          sha_rules=$(fetch_sha "$base/raw/$tag/99-maono.rules")
+
+          mkdir -p out
+          sed -e "s|@PKGVER@|${{ steps.ver.outputs.pkgver }}|" \
+              -e "s|@SHA_BIN@|$sha_bin|" \
+              -e "s|@SHA_LICENSE@|$sha_license|" \
+              -e "s|@SHA_RULES@|$sha_rules|" \
+              packaging/PKGBUILD.in > out/PKGBUILD
+
+          # Match only @PLACEHOLDER@ - the maintainer line has an @ in it.
+          if grep -qE '@[A-Z_]+@' out/PKGBUILD; then
+            echo "::error::unreplaced placeholder in PKGBUILD"
+            exit 1
+          fi
+          cat out/PKGBUILD
+
+      - name: Build the package and generate .SRCINFO
+        run: |
+          set -euo pipefail
+          # makepkg refuses to run as root, so hand the work to a normal user.
+          useradd -m builder
+          cp out/PKGBUILD /home/builder/
+          chown -R builder:builder /home/builder
+          su builder -c 'cd ~ && makepkg --printsrcinfo > .SRCINFO'
+          su builder -c 'cd ~ && makepkg -f --noconfirm'
+          cp /home/builder/.SRCINFO out/.SRCINFO
+          su builder -c 'cd ~ && tar -tf *.pkg.tar.zst | grep -v "^\."'
+
+      - name: Push to the AUR
+        env:
+          AUR_SSH_PRIVATE_KEY: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh
+          printf '%s\n' "$AUR_SSH_PRIVATE_KEY" > ~/.ssh/aur
+          chmod 600 ~/.ssh/aur
+          ssh-keyscan -H aur.archlinux.org >> ~/.ssh/known_hosts 2>/dev/null
+          export GIT_SSH_COMMAND="ssh -i ~/.ssh/aur -o IdentitiesOnly=yes"
+
+          git clone ssh://aur@aur.archlinux.org/maono.git aur
+          cp out/PKGBUILD out/.SRCINFO aur/
+          cd aur
+          git config user.name "Shahriyar Alam"
+          git config user.email "mdshahriyaralam552@gmail.com"
+
+          if git diff --quiet; then
+            echo "AUR is already up to date, nothing to push."
+            exit 0
+          fi
+          git add PKGBUILD .SRCINFO
+          git commit -m "upgpkg: maono ${{ steps.ver.outputs.pkgver }}-1"
+          git push origin master

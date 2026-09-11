@@ -125,7 +125,24 @@ maono light next      # cycle the RGB mode
 
 The mouse works too: click or drag the sliders and switches.
 
-### Status bar
+### Releasing
+
+Publishing a GitHub release does the rest. `.github/workflows/release.yml`
+builds the binary in an Arch container, attaches it to that release, renders
+`packaging/PKGBUILD.in` with the new version and checksums, and pushes the
+result to the AUR.
+
+```sh
+# bump version in Cargo.toml first, then:
+git tag -a v0.3.0 -m "maono 0.3.0" && git push origin v0.3.0
+gh release create v0.3.0 --generate-notes
+```
+
+The workflow refuses to run if the tag and `Cargo.toml` disagree. It needs one
+repository secret, `AUR_SSH_PRIVATE_KEY`, holding a key registered with the AUR
+account. `workflow_dispatch` re-runs it against an existing tag.
+
+## Status bar
 
 `maono status --json` prints one line for Waybar and friends:
 
@@ -180,6 +197,23 @@ notices you pressing the buttons on the mic itself.
 
 Protocol details live in `src/mic.rs`, and every frontend drives the device
 through that one module.
+
+## Releasing
+
+Publishing a GitHub release does the rest. `.github/workflows/release.yml`
+builds the binary in an Arch container, attaches it to that release, renders
+`packaging/PKGBUILD.in` with the new version and checksums, and pushes the
+result to the AUR.
+
+```sh
+# bump version in Cargo.toml first, then:
+git tag -a v0.3.0 -m "maono 0.3.0" && git push origin v0.3.0
+gh release create v0.3.0 --generate-notes
+```
+
+The workflow refuses to run if the tag and `Cargo.toml` disagree. It needs one
+repository secret, `AUR_SSH_PRIVATE_KEY`, holding a key registered with the AUR
+account. `workflow_dispatch` re-runs it against an existing tag.
 
 ## Status
 
