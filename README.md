@@ -162,7 +162,7 @@ to overwrite an existing copy, and `maono shell uninstall` to remove it.
 
 Inside the panel: arrow keys move between the controls and change the selected
 one, `m` mutes, `l` toggles the light, `r` reloads. The mouse works on the
-switches and sliders.
+switches, the slider and the noise-reduction chips.
 
 ## Status bar
 

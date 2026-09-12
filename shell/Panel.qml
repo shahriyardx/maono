@@ -365,46 +365,41 @@ Panel {
         }
 
         // ---------- Noise reduction ----------
+        // Four discrete settings, so a row of chips rather than a slider:
+        // every option is visible and one click away.
         Column {
           width: parent.width
           visible: root.present
-          spacing: Style.space(4)
+          spacing: Style.space(6)
 
-          Item {
-            width: parent.width
-            implicitHeight: nrLabel.implicitHeight
-
-            Text {
-              id: nrLabel
-              anchors.left: parent.left
-              anchors.verticalCenter: parent.verticalCenter
-              text: "Noise reduction"
-              color: Color.foreground
-              opacity: (root.cursorActive && root.selectedIndex === 2) ? 1.0 : 0.75
-              font.family: Style.font.family
-              font.pixelSize: Style.font.bodySmall
-            }
-
-            Text {
-              anchors.right: parent.right
-              anchors.verticalCenter: parent.verticalCenter
-              text: root.nrNames[root.nrStep]
-              color: Color.foreground
-              opacity: 0.55
-              font.family: Style.font.family
-              font.pixelSize: Style.font.bodySmall
-            }
+          Text {
+            id: nrLabel
+            text: "Noise reduction"
+            color: Color.foreground
+            opacity: (root.cursorActive && root.selectedIndex === 2) ? 1.0 : 0.75
+            font.family: Style.font.family
+            font.pixelSize: Style.font.bodySmall
           }
 
-          PanelSlider {
-            width: parent.width
-            bar: root.bar
-            minimum: 0
-            maximum: 3
-            step: 1
-            integer: true
-            value: root.nrStep
-            onReleased: function(v) { root.setNr(v) }
+          ButtonGroup {
+            id: nrChoice
+            options: root.nrNames
+            value: root.nrNames[root.nrStep]
+            fontSize: Style.font.bodySmall
+            // The panel owns the cursor, so the group never takes Tab focus.
+            focusable: false
+            cursorIndex: (root.cursorActive && root.selectedIndex === 2) ? root.nrStep : -1
+            onChanged: function(v) {
+              root.cursorActive = true
+              root.selectedIndex = 2
+              root.setNr(root.nrNames.indexOf(v))
+            }
+            onHovered: function(index, isHovered) {
+              if (isHovered) {
+                root.cursorActive = true
+                root.selectedIndex = 2
+              }
+            }
           }
         }
 
