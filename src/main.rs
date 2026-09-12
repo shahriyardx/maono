@@ -7,7 +7,8 @@ mod tui;
 mod shell;
 
 use mic::{
-    Mic, BATTERY, GAIN, GAIN_MAX, LIGHT, LIGHT_MODE, LIGHT_MODE_MAX, MUTE, NR, NR_LEVEL, NR_NAMES,
+    light_mode_from_name, light_mode_name, Mic, BATTERY, GAIN, GAIN_MAX, LIGHT, LIGHT_MODE,
+    LIGHT_MODE_MAX, MUTE, NR, NR_LEVEL, NR_NAMES,
 };
 use std::io::Write;
 use std::process::ExitCode;
@@ -20,7 +21,7 @@ maono - control a Maono PD100W wireless microphone
     maono mute | unmute | toggle
     maono gain [n | +n | -n]  0-20
     maono nr [off | low | mid | high]
-    maono light [on | off | next | 0-8]
+    maono light [on | off | next | 0-8 | <colour>]
 
     maono shell install       add the Omarchy bar widget (--force to replace)
     maono shell uninstall     remove it again
@@ -28,6 +29,9 @@ maono - control a Maono PD100W wireless microphone
     maono get <id>            read one raw field, e.g. 0x208e
     maono set <id> <value>    write one raw field
     maono scan [lo] [hi]      dump a field range (read-only)
+
+Light colours, in the order the light button cycles them:
+white, red, orange, lime, green, cyan, blue, purple, light blue.
 
 Field ids are slot-based: 0x2000 transmitter 1, 0x2800 transmitter 2,
 0x3000 receiver. The firmware validates nothing it is sent.
@@ -98,7 +102,7 @@ impl State {
             "{{\"text\":\"{icon}\",\"class\":\"{class}\",\"tooltip\":\"{tip}\",\
 \"muted\":{muted},\"battery\":{batt},\"gain\":{gain},\"gain_max\":{gm},\
 \"nr\":\"{nr}\",\"nr_on\":{nr_on},\"nr_level\":{nr_lvl},\
-\"light_on\":{light},\"light_mode\":{mode}}}",
+\"light_on\":{light},\"light_mode\":{mode},\"light_mode_name\":\"{mode_name}\"}}",
             class = if muted { "muted" } else { "live" },
             tip = format!(
                 "Mic {} · battery {}% · gain {}/{GAIN_MAX} · NR {}",
@@ -117,6 +121,7 @@ impl State {
             nr_lvl = num(self.nr_level),
             light = self.light_on.unwrap_or(false),
             mode = num(self.light_mode),
+            mode_name = self.light_mode.map_or("?", light_mode_name),
         );
     }
 }
@@ -239,7 +244,11 @@ fn main() -> ExitCode {
                 None => {
                     let on = m.get(LIGHT)?.unwrap_or(0) != 0;
                     let mode = m.get(LIGHT_MODE)?.unwrap_or(0);
-                    println!("  light : {}  mode {mode}", if on { "on" } else { "off" });
+                    println!(
+                        "  light : {}  mode {mode} ({})",
+                        if on { "on" } else { "off" },
+                        light_mode_name(mode)
+                    );
                 }
                 Some(arg) => {
                     let arg = arg.to_lowercase();
@@ -256,15 +265,22 @@ fn main() -> ExitCode {
                             std::thread::sleep(std::time::Duration::from_millis(150));
                             m.set(LIGHT_MODE, next)?;
                         }
-                        _ => match arg.parse::<u16>() {
-                            Ok(n) if n <= LIGHT_MODE_MAX => {
+                        // A number, or one of the colour names.
+                        _ => match arg
+                            .parse::<u16>()
+                            .ok()
+                            .filter(|n| *n <= LIGHT_MODE_MAX)
+                            .or_else(|| light_mode_from_name(&arg))
+                        {
+                            Some(n) => {
                                 m.set(LIGHT, 1)?;
                                 std::thread::sleep(std::time::Duration::from_millis(150));
                                 m.set(LIGHT_MODE, n)?;
                             }
-                            _ => {
+                            None => {
                                 return Ok(fail(format!(
-                                    "light takes on, off, next, or 0-{LIGHT_MODE_MAX}"
+                                    "light takes on, off, next, 0-{LIGHT_MODE_MAX}, or a colour: {}",
+                                    mic::LIGHT_MODE_NAMES.join(", ")
                                 )))
                             }
                         },
@@ -272,7 +288,11 @@ fn main() -> ExitCode {
                     std::thread::sleep(std::time::Duration::from_millis(350));
                     let on = m.get(LIGHT)?.unwrap_or(0) != 0;
                     let mode = m.get(LIGHT_MODE)?.unwrap_or(0);
-                    println!("  light : {}  mode {mode}", if on { "on" } else { "off" });
+                    println!(
+                        "  light : {}  mode {mode} ({})",
+                        if on { "on" } else { "off" },
+                        light_mode_name(mode)
+                    );
                 }
             },
             "get" => {

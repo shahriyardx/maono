@@ -1,6 +1,6 @@
 [package]
 name = "maono"
-version = "0.5.0"
+version = "0.6.0"
 edition = "2024"
 description = "Control a Maono PD100W wireless microphone from a terminal UI or the command line"
 license = "MIT"

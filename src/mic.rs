@@ -42,6 +42,41 @@ pub const GAIN_MAX: u16 = 20;
 pub const LIGHT_MODE_MAX: u16 = 8;
 pub const NR_NAMES: [&str; 3] = ["low", "mid", "high"];
 
+/// The colour each light mode produces, in the order the light button cycles
+/// them. Taken from the hardware, not from the app.
+pub const LIGHT_MODE_NAMES: [&str; 9] = [
+    "white",
+    "red",
+    "orange",
+    "lime",
+    "green",
+    "cyan",
+    "blue",
+    "purple",
+    "light blue",
+];
+
+/// Resolve a colour name to its mode number. Accepts "light blue",
+/// "lightblue" and "light-blue" alike.
+pub fn light_mode_from_name(name: &str) -> Option<u16> {
+    let want: String = name
+        .to_lowercase()
+        .chars()
+        .filter(|c| !c.is_whitespace() && *c != '-' && *c != '_')
+        .collect();
+    LIGHT_MODE_NAMES.iter().position(|n| {
+        n.chars()
+            .filter(|c| !c.is_whitespace())
+            .collect::<String>()
+            == want
+    }).map(|i| i as u16)
+}
+
+/// Name for a mode number, or "?" when the device reports one we do not know.
+pub fn light_mode_name(mode: u16) -> &'static str {
+    LIGHT_MODE_NAMES.get(mode as usize).copied().unwrap_or("?")
+}
+
 /// Locate the receiver's hidraw node. The number moves between replugs, so we
 /// match on the USB ids rather than assuming `hidraw0`.
 pub fn find_device() -> Option<String> {

@@ -35,6 +35,9 @@ Panel {
   property bool nrOn: false
   property int nrLevel: 0
   property bool lightOn: false
+  property int lightMode: 0
+  // Mode the user has clicked to but that has not reached the device yet.
+  property int pendingMode: -1
   property bool loading: false
   property string error: ""
 
@@ -43,14 +46,38 @@ Panel {
   property int pendingGain: -1
   property bool gainQueued: false
 
-  // Keyboard cursor. Rows: 0 mute, 1 gain, 2 noise reduction, 3 light.
+  // Keyboard cursor. Rows: 0 gain, 1 noise reduction, 2 light, 3 colour
+  // (the last one only reachable while the light is on). Mute is not a row -
+  // it sits in the header and answers to m.
   property bool cursorActive: false
   property int selectedIndex: 0
-  readonly property int rowCount: 4
+  readonly property int rowCount: root.lightOn ? 4 : 3
+
+  readonly property int lightModeMax: 8
 
   readonly property var nrNames: ["off", "low", "mid", "high"]
 
+  // Light modes are colours, in the order the button on the mic cycles them.
+  // The swatch colours are approximations for the chips, not device values.
+  readonly property var lightModes: [
+    { name: "white",      color: "#f2f2f2" },
+    { name: "red",        color: "#e23b3b" },
+    { name: "orange",     color: "#e98b26" },
+    { name: "lime",       color: "#a6d629" },
+    { name: "green",      color: "#33b054" },
+    { name: "cyan",       color: "#2fc2bd" },
+    { name: "blue",       color: "#3a6fe0" },
+    { name: "purple",     color: "#9b5de5" },
+    { name: "light blue", color: "#63c6f5" }
+  ]
+
+  function lightModeName(mode) {
+    var m = root.lightModes[mode]
+    return m === undefined ? String(mode) : m.name
+  }
+
   readonly property int displayGain: pendingGain >= 0 ? pendingGain : gain
+  readonly property int displayMode: pendingMode >= 0 ? pendingMode : lightMode
 
   readonly property string icon: root.muted ? "󰍭" : "󰍬"
 
@@ -71,6 +98,7 @@ Panel {
     loading = true
     loadProc.command = [binary, "status", "--json"]
     loadProc.running = true
+    watchdog.restart()
   }
 
   function apply(text) {
@@ -95,6 +123,7 @@ Panel {
     nrOn = d.nr_on === true
     nrLevel = d.nr_level === null ? 0 : d.nr_level
     lightOn = d.light_on === true
+    lightMode = d.light_mode === null ? 0 : d.light_mode
     present = true
     error = ""
   }
@@ -117,6 +146,19 @@ Panel {
   function setLight(on) {
     lightOn = on
     run(["light", on ? "on" : "off"])
+  }
+
+  // `light <n>` switches the light on as well, which is what you want when
+  // picking a mode from the panel.
+  function setLightMode(value) {
+    var v = Math.max(0, Math.min(lightModeMax, Math.round(value)))
+    pendingMode = v
+    lightOn = true
+    run(["light", String(v)])
+  }
+
+  function nextLightMode() {
+    setLightMode((displayMode + 1) % (lightModeMax + 1))
   }
 
   // Record locally and let the debounce collapse a drag into one write.
@@ -146,16 +188,31 @@ Panel {
 
   function nudge(delta) {
     if (!present) return
-    if (selectedIndex === 0) setMute(delta > 0)
-    else if (selectedIndex === 1) setGain(displayGain + delta * step)
-    else if (selectedIndex === 2) setNr(nrStep + (delta > 0 ? 1 : -1))
-    else if (selectedIndex === 3) setLight(delta > 0)
+    if (selectedIndex === 0) setGain(displayGain + delta * step)
+    else if (selectedIndex === 1) setNr(nrStep + (delta > 0 ? 1 : -1))
+    else if (selectedIndex === 2) setLight(delta > 0)
+    else if (selectedIndex === 3) setLightMode(displayMode + delta)
   }
 
   Timer {
     id: debounce
     interval: 120
     onTriggered: root.flushGain()
+  }
+
+  // A binary that is not on PATH never starts, so onExited never fires and
+  // the panel would sit on "Loading" for good. Say so instead.
+  Timer {
+    id: watchdog
+    interval: 4000
+    onTriggered: {
+      if (!root.loading) return
+      root.loading = false
+      root.present = false
+      if (root.error === "") {
+        root.error = "Could not run " + root.binary
+      }
+    }
   }
 
   Process {
@@ -172,6 +229,7 @@ Panel {
       }
     }
     onExited: function(exitCode) {
+      watchdog.stop()
       root.loading = false
       if (exitCode !== 0) {
         root.present = false
@@ -192,6 +250,7 @@ Panel {
     onExited: function(exitCode) {
       if (exitCode === 0) root.error = ""
       root.pendingGain = -1
+      root.pendingMode = -1
       // Read back rather than trusting the optimistic local value: the
       // firmware clamps, and the physical buttons may have moved too.
       if (root.gainQueued) Qt.callLater(root.flushGain)
@@ -238,9 +297,12 @@ Panel {
       }
       onCloseRequested: root.close()
       onTabRequested: function(direction) { root.switchPanel(direction) }
+      // h j k l and x belong to PanelKeyCatcher's own navigation and never
+      // reach here, so the light is on b - not l.
       onTextKey: function(t) {
         if (t === "m" || t === "M") root.setMute(!root.muted)
-        else if (t === "l" || t === "L") root.setLight(!root.lightOn)
+        else if (t === "b" || t === "B") root.setLight(!root.lightOn)
+        else if (t === "n" || t === "N") root.nextLightMode()
         else if (t === "r" || t === "R") root.load()
       }
 
@@ -254,7 +316,7 @@ Panel {
         // ---------- Header: title · battery ----------
         Item {
           width: parent.width
-          implicitHeight: title.implicitHeight
+          implicitHeight: Math.max(title.implicitHeight, muteToggle.implicitHeight)
 
           Column {
             id: title
@@ -283,31 +345,14 @@ Panel {
               font.pixelSize: Style.font.caption
             }
           }
-        }
 
-        PanelSeparator { width: parent.width }
-
-        // ---------- Mute ----------
-        Item {
-          width: parent.width
-          visible: root.present
-          implicitHeight: Math.max(muteLabel.implicitHeight, muteToggle.implicitHeight)
-
-          Text {
-            id: muteLabel
-            anchors.left: parent.left
-            anchors.verticalCenter: parent.verticalCenter
-            text: "Mute"
-            color: Color.foreground
-            opacity: (root.cursorActive && root.selectedIndex === 0) ? 1.0 : 0.75
-            font.family: Style.font.family
-            font.pixelSize: Style.font.bodySmall
-          }
-
+          // Mute lives in the header: it is the one control people open the
+          // panel for, and the subtitle already reports its state.
           ToggleSwitch {
             id: muteToggle
             anchors.right: parent.right
             anchors.verticalCenter: parent.verticalCenter
+            visible: root.present
             checked: root.muted
             foreground: Color.foreground
             onToggled: root.setMute(!root.muted)
@@ -318,6 +363,8 @@ Panel {
             }
           }
         }
+
+        PanelSeparator { width: parent.width }
 
         // ---------- Gain ----------
         Column {
@@ -335,7 +382,7 @@ Panel {
               anchors.verticalCenter: parent.verticalCenter
               text: "Gain"
               color: Color.foreground
-              opacity: (root.cursorActive && root.selectedIndex === 1) ? 1.0 : 0.75
+              opacity: (root.cursorActive && root.selectedIndex === 0) ? 1.0 : 0.75
               font.family: Style.font.family
               font.pixelSize: Style.font.bodySmall
             }
@@ -376,61 +423,112 @@ Panel {
             id: nrLabel
             text: "Noise reduction"
             color: Color.foreground
-            opacity: (root.cursorActive && root.selectedIndex === 2) ? 1.0 : 0.75
+            opacity: (root.cursorActive && root.selectedIndex === 1) ? 1.0 : 0.75
             font.family: Style.font.family
             font.pixelSize: Style.font.bodySmall
           }
 
-          ButtonGroup {
-            id: nrChoice
-            options: root.nrNames
-            value: root.nrNames[root.nrStep]
-            fontSize: Style.font.bodySmall
-            // The panel owns the cursor, so the group never takes Tab focus.
-            focusable: false
-            cursorIndex: (root.cursorActive && root.selectedIndex === 2) ? root.nrStep : -1
-            onChanged: function(v) {
-              root.cursorActive = true
-              root.selectedIndex = 2
-              root.setNr(root.nrNames.indexOf(v))
-            }
-            onHovered: function(index, isHovered) {
-              if (isHovered) {
-                root.cursorActive = true
-                root.selectedIndex = 2
+          // ButtonGroup is a plain Row, so its chips size to their text and
+          // leave the panel half empty. A RowLayout with fillWidth spreads
+          // them across the full width instead.
+          RowLayout {
+            width: parent.width
+            spacing: Style.spacing.md
+
+            Repeater {
+              model: root.nrNames
+
+              delegate: Button {
+                required property var modelData
+                required property int index
+                Layout.fillWidth: true
+                text: modelData
+                fontSize: Style.font.bodySmall
+                bordered: true
+                selected: index === root.nrStep
+                hasCursor: root.cursorActive && root.selectedIndex === 1
+                  && index === root.nrStep
+                onClicked: {
+                  root.cursorActive = true
+                  root.selectedIndex = 1
+                  root.setNr(index)
+                }
               }
             }
           }
         }
 
-        // ---------- RGB light ----------
-        Item {
+        // ---------- RGB light, with its colours right underneath ----------
+        // One block, tight spacing: the swatches belong to the switch above
+        // them, not to a section of their own.
+        Column {
           width: parent.width
           visible: root.present
-          implicitHeight: Math.max(lightLabel.implicitHeight, lightToggle.implicitHeight)
+          spacing: Style.space(6)
 
-          Text {
-            id: lightLabel
-            anchors.left: parent.left
-            anchors.verticalCenter: parent.verticalCenter
-            text: "RGB light"
-            color: Color.foreground
-            opacity: (root.cursorActive && root.selectedIndex === 3) ? 1.0 : 0.75
-            font.family: Style.font.family
-            font.pixelSize: Style.font.bodySmall
+          Item {
+            width: parent.width
+            implicitHeight: Math.max(lightLabel.implicitHeight, lightToggle.implicitHeight)
+
+            Text {
+              id: lightLabel
+              anchors.left: parent.left
+              anchors.verticalCenter: parent.verticalCenter
+              text: "RGB light"
+              color: Color.foreground
+              opacity: (root.cursorActive && root.selectedIndex === 2) ? 1.0 : 0.75
+              font.family: Style.font.family
+              font.pixelSize: Style.font.bodySmall
+            }
+
+            ToggleSwitch {
+              id: lightToggle
+              anchors.right: parent.right
+              anchors.verticalCenter: parent.verticalCenter
+              checked: root.lightOn
+              foreground: Color.foreground
+              onToggled: root.setLight(!root.lightOn)
+
+              PanelToolTip {
+                visible: lightToggle.containsMouse
+                text: "Ring light on the mic"
+              }
+            }
           }
 
-          ToggleSwitch {
-            id: lightToggle
-            anchors.right: parent.right
-            anchors.verticalCenter: parent.verticalCenter
-            checked: root.lightOn
-            foreground: Color.foreground
-            onToggled: root.setLight(!root.lightOn)
+          // Nine colours. Three to a row divides evenly; four would leave the
+          // last one alone. Each chip carries its own colour as the accent, so
+          // the selected state and the border paint in that colour.
+          Grid {
+            id: modeGrid
+            width: parent.width
+            visible: root.lightOn
+            columns: 3
+            columnSpacing: Style.spacing.md
+            rowSpacing: Style.spacing.md
 
-            PanelToolTip {
-              visible: lightToggle.containsMouse
-              text: "Ring light on the mic"
+            Repeater {
+              model: root.lightModes
+
+              delegate: Button {
+                required property var modelData
+                required property int index
+                width: (modeGrid.width - modeGrid.columnSpacing * (modeGrid.columns - 1))
+                  / modeGrid.columns
+                text: modelData.name
+                tooltipText: "Mode " + index
+                fontSize: Style.font.caption
+                bordered: true
+                accent: modelData.color
+                selected: index === root.displayMode
+                hasCursor: root.cursorActive && root.selectedIndex === 3
+                  && index === root.displayMode
+                onClicked: {
+                  root.cursorActive = true
+                  root.selectedIndex = 3
+                  root.setLightMode(index)
+                }
+              }
             }
           }
         }
@@ -444,7 +542,7 @@ Panel {
         Text {
           width: parent.width
           visible: root.present
-          text: "m mute · l light · r reload"
+          text: "m mute · b light · n colour · r reload"
           color: Color.foreground
           opacity: 0.4
           font.family: Style.font.family

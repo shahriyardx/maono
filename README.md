@@ -91,7 +91,7 @@ maono status [--json]     battery, mute, gain, noise reduction
 maono mute | unmute | toggle
 maono gain [n | +n | -n]  0-20
 maono nr [off | low | mid | high]
-maono light [on | off | next | 0-8]
+maono light [on | off | next | 0-8 | <colour>]
 
 maono get <id>            read one raw field, e.g. 0x208e
 maono set <id> <value>    write one raw field
@@ -109,6 +109,7 @@ maono toggle          # mute or unmute
 maono gain +2         # nudge gain up
 maono nr high
 maono light next      # cycle the RGB mode
+maono light purple    # or by colour name
 ```
 
 ### TUI keys
@@ -160,9 +161,13 @@ omarchy plugin enable maono
 there and a package cannot write to your config at build time. Pass `--force`
 to overwrite an existing copy, and `maono shell uninstall` to remove it.
 
-Inside the panel: arrow keys move between the controls and change the selected
-one, `m` mutes, `l` toggles the light, `r` reloads. The mouse works on the
-switches, the slider and the noise-reduction chips.
+Mute sits in the panel header. Below it: a gain slider, noise reduction as four
+chips, the light switch, and the nine light colours as chips right under it.
+
+Keys inside the panel: `j` / `k` move between controls, `h` / `l` change the
+selected one, `m` mutes, `b` toggles the light, `n` steps to the next colour,
+`r` reloads. `h j k l` belong to the shell's own navigation, which is why the
+light is on `b`.
 
 ## Status bar
 
@@ -199,6 +204,10 @@ Field ids are slot-based: `0x2000` is transmitter 1, `0x2800` transmitter 2,
 | `0x2085` | Noise reduction level, 0–2 |
 | `0x2089` | RGB light on/off |
 | `0x208c` | RGB light mode, 0–8 |
+
+Light modes are colours, in the order the light button cycles them: `0` white,
+`1` red, `2` orange, `3` lime, `4` green, `5` cyan, `6` blue, `7` purple,
+`8` light blue. `maono light <colour>` takes any of those names.
 
 **Careful:** the firmware validates nothing it is sent. `set` stores any 16-bit
 value at any id, including ids nobody has mapped yet. `scan` is read-only and
